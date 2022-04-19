@@ -1,8 +1,13 @@
 package tests;
 
+import io.restassured.response.Response;
+import io.restassured.response.ValidatableResponse;
 import org.junit.jupiter.api.Test;
 
-import static io.restassured.RestAssured.given;
+import static io.restassured.RestAssured.*;
+import static org.hamcrest.Matchers.hasKey;
+import static org.hamcrest.Matchers.is;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 
 public class SelenoidTests {
@@ -12,9 +17,86 @@ public class SelenoidTests {
     @Test
     void checkTotal() {
         given()
+                .when()
                 .get("https://selenoid.autotests.cloud/status")
                 .then()
-                .body("Total", is(20));
+                .body("total", is(20));
     }
 
+    @Test
+    void checkChromeVersion(){
+
+        given()
+                .when()
+                .get("https://selenoid.autotests.cloud/status")
+                .then()
+                .body("browsers.chrome", hasKey("100.0"));
+    }
+
+    @Test
+    void checkTotalBadPractice() {
+
+        String response = get("https://selenoid.autotests.cloud/status")
+
+                .then()
+                .extract().response().asString();
+
+        System.out.println("Response: " + response);
+
+        String expectedResponse = "{\"total\":20,\"used\":0,\"queued\":0,\"pending\":0," +
+                "\"browsers\":" +
+                "{\"chrome\":{\"100.0\":{},\"99.0\":{}}," +
+                "\"firefox\":{\"97.0\":{},\"98.0\":{}}," +
+                "\"opera\":{\"84.0\":{},\"85.0\":{}}}}\n";
+        assertEquals(expectedResponse, response);
+    }
+
+    @Test
+    void checkTotalGoodPractice() {
+        int response = get("https://selenoid.autotests.cloud/status")
+                .then()
+                .extract()
+                .path("total");
+
+        System.out.println("Response: " + response);
+
+        int expectedResponse = 20;
+        assertEquals(expectedResponse, response);
+    }
+
+    @Test
+    void responseExamples() {
+        Response response = get("https://selenoid.autotests.cloud/status")
+                .then()
+                .extract().response();
+
+        System.out.println("Response: " + response);
+        System.out.println("Response .toString(): " + response.toString());
+        System.out.println("Response .asString(): " + response.asString());
+        System.out.println("Response .path(\"total\"): " + response.path("total"));
+        System.out.println("Response .path(\"browsers.chrome\"): " + response.path("browsers.chrome"));
+    }
+
+    @Test
+    void checkStatus401() {
+        get("https://selenoid.autotests.cloud/wd/hub/status")
+                .then()
+                .statusCode(401);
+    }
+
+    @Test
+    void checkStatus200() {
+        get("https://user1:1234@selenoid.autotests.cloud/wd/hub/status")
+                .then()
+                .statusCode(200);
+    }
+
+    @Test
+    void checkStatus200WithAuth() {
+        given()
+                .auth().basic("user1", "1234")
+                .get("https://selenoid.autotests.cloud/wd/hub/status")
+                .then()
+                .statusCode(200);
+    }
 }
